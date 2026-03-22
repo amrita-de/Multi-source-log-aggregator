@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+body {
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  text-align: left;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #161b22; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+
+/* Log level badge classes */
+.badge-INFO    { background-color: #1d3558; color: #58a6ff; border: 1px solid #1f6feb; }
+.badge-WARN    { background-color: #2d2208; color: #d29922; border: 1px solid #9e6a03; }
+.badge-ERROR   { background-color: #3d0b0b; color: #f85149; border: 1px solid #da3633; }
+.badge-DEBUG   { background-color: #1c1f24; color: #6e7681; border: 1px solid #30363d; }
+
+.badge-Payment-Service   { background-color: #1a2f1a; color: #3fb950; border: 1px solid #238636; }
+.badge-Auth-Service      { background-color: #1d2a3d; color: #79c0ff; border: 1px solid #1f6feb; }
+.badge-Inventory-Service { background-color: #2d1f3d; color: #d2a8ff; border: 1px solid #8957e5; }

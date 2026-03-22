@@ -1,0 +1,11 @@
+{
+  "name": "log-aggregator-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda processor for log aggregation",
+  "main": "processor.js",
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "mongoose": "^8.0.0",
+    "uuid": "^9.0.1"
+  }
+}
