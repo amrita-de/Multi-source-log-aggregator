@@ -15,6 +15,11 @@ const logsRoutes    = require('./routes/logs');
 
 const PORT = process.env.PORT || 4000;
 
+// --- CORS Origins ---
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 // --- Express App ---
 const app    = express();
 const server = http.createServer(app);
@@ -22,7 +27,7 @@ const server = http.createServer(app);
 // --- Socket.io ---
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
 });
@@ -31,7 +36,7 @@ const io = new Server(server, {
 app.set('io', io);
 
 // --- Middleware ---
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'] }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -103,6 +108,46 @@ io.on('connection', (socket) => {
   });
 });
 
+// --- Embedded Worker (for single-process deployment) ---
+async function startEmbeddedWorker() {
+  const { v4: uuidv4 } = require('uuid');
+  const { Log }        = require('./services/db');
+  const s3             = require('./services/s3');
+
+  console.log('[Worker] ✅ Embedded worker started — consuming from Redis queue\n');
+
+  while (true) {
+    try {
+      const raw = await queue.pop(5);
+      if (!raw) continue;
+
+      const now  = new Date();
+      const tsMs = raw.timestamp * 1000;
+      const doc  = {
+        app_name:       String(raw.app_name),
+        level:          String(raw.level).toUpperCase(),
+        message:        String(raw.message),
+        timestamp_unix: Number(raw.timestamp),
+        timestamp_iso:  new Date(tsMs),
+        ingested_at:    now,
+        environment:    raw.environment || 'production',
+        metadata:       raw.metadata || {},
+        s3_key:         null,
+      };
+
+      const id    = uuidv4();
+      const s3Key = s3.buildKey(doc.timestamp_iso, id);
+      const uploadedKey = await s3.uploadLog(s3Key, { ...doc, _id: id });
+      if (uploadedKey) doc.s3_key = uploadedKey;
+
+      const savedLog = await Log.create(doc);
+      io.emit('new_log', savedLog.toObject());
+    } catch (err) {
+      console.error('[Worker] Error:', err.message);
+    }
+  }
+}
+
 // --- Startup ---
 async function start() {
   try {
@@ -115,12 +160,17 @@ async function start() {
 
     // Start HTTP + WebSocket server
     server.listen(PORT, () => {
-      console.log(`\n[Server] ✅ Ingestion API running on http://localhost:${PORT}`);
-      console.log(`[Server]    Health:  http://localhost:${PORT}/api/health`);
-      console.log(`[Server]    Ingest:  POST http://localhost:${PORT}/api/ingest`);
-      console.log(`[Server]    Logs:    GET  http://localhost:${PORT}/api/logs`);
-      console.log(`[Server]    Stats:   GET  http://localhost:${PORT}/api/logs/stats\n`);
+      console.log(`\n[Server] ✅ Ingestion API running on port ${PORT}`);
+      console.log(`[Server]    Health:  /api/health`);
+      console.log(`[Server]    Ingest:  POST /api/ingest`);
+      console.log(`[Server]    Logs:    GET  /api/logs`);
+      console.log(`[Server]    Stats:   GET  /api/logs/stats\n`);
     });
+
+    // Start embedded worker if RUN_WORKER=true (for single-process deploy)
+    if (process.env.RUN_WORKER === 'true') {
+      startEmbeddedWorker();
+    }
   } catch (err) {
     console.error('[Server] Startup failed:', err.message);
     process.exit(1);
