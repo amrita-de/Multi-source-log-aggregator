@@ -6,7 +6,12 @@ const Redis = require('ioredis');
 
 const QUEUE_KEY = 'log_queue';
 
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+// Clean the URL — remove any accidental CLI flags or spaces
+let redisUrl = (process.env.REDIS_URL || 'redis://localhost:6379').trim();
+// Strip anything before the actual redis:// or rediss:// protocol
+const protocolMatch = redisUrl.match(/(rediss?:\/\/.+)/);
+if (protocolMatch) redisUrl = protocolMatch[1];
+console.log('[Queue] Connecting to Redis:', redisUrl.replace(/\/\/.*@/, '//<hidden>@'));
 const isUpstash = redisUrl.includes('upstash.io');
 
 const redisOptions = {
