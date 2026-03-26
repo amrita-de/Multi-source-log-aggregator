@@ -6,16 +6,22 @@ const Redis = require('ioredis');
 
 const QUEUE_KEY = 'log_queue';
 
-// Publisher client (used by ingestion API)
-const publisher = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const isUpstash = redisUrl.includes('upstash.io');
+
+const redisOptions = {
   maxRetriesPerRequest: 3,
   lazyConnect: true,
-});
+  ...(isUpstash && { tls: { rejectUnauthorized: false } }),
+};
+
+// Publisher client (used by ingestion API)
+const publisher = new Redis(redisUrl, redisOptions);
 
 // Subscriber/consumer client (used by worker - blocking pop needs separate connection)
-const consumer = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const consumer = new Redis(redisUrl, {
+  ...redisOptions,
   maxRetriesPerRequest: null, // retry forever for the blocking consumer
-  lazyConnect: true,
 });
 
 publisher.on('connect', () => console.log('[Queue] Publisher connected to Redis'));
