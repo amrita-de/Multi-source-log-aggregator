@@ -12,6 +12,7 @@ const { connectDB } = require('./services/db');
 const queue         = require('./services/queue');
 const ingestRoutes  = require('./routes/ingest');
 const logsRoutes    = require('./routes/logs');
+const demoRoutes    = require('./routes/demo');
 
 const PORT = process.env.PORT || 4000;
 
@@ -49,6 +50,7 @@ app.use((req, res, next) => {
 // --- Routes ---
 app.use('/api/ingest', ingestRoutes);
 app.use('/api/logs',   logsRoutes);
+app.use('/api/demo',   demoRoutes);
 
 // Internal endpoint for worker to emit Socket.io events
 app.post('/api/internal/emit', (req, res) => {

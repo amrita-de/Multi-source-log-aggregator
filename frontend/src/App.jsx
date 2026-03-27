@@ -35,6 +35,8 @@ export default function App() {
   const [selectedLog, setSelectedLog] = useState(null);
   const [activeAlert, setActiveAlert] = useState(null);
   const [liveCount,   setLiveCount]   = useState(0);
+  const [demoActive,  setDemoActive]  = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const filtersRef   = useRef(filters);
   const paginationRef = useRef(pagination);
@@ -75,6 +77,7 @@ export default function App() {
   useEffect(() => {
     fetchLogs(1, DEFAULT_FILTERS);
     fetchStats();
+    logService.getDemoStatus().then(res => setDemoActive(res.data.active)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -102,6 +105,23 @@ export default function App() {
       fetchStats();
     },
   });
+
+  async function toggleDemo() {
+    setDemoLoading(true);
+    try {
+      if (demoActive) {
+        await logService.stopDemo();
+        setDemoActive(false);
+      } else {
+        await logService.startDemo();
+        setDemoActive(true);
+      }
+    } catch (err) {
+      console.error('Demo toggle failed:', err.message);
+    } finally {
+      setDemoLoading(false);
+    }
+  }
 
   function handleFilterChange(newFilters) {
     setFilters(newFilters);
@@ -143,6 +163,23 @@ export default function App() {
                 ● {liveCount} live
               </span>
             )}
+            <button
+              onClick={toggleDemo}
+              disabled={demoLoading}
+              style={{
+                background: demoActive ? '#2d1215' : '#122117',
+                border: `1px solid ${demoActive ? '#da3633' : '#238636'}`,
+                borderRadius: '6px',
+                color: demoActive ? '#f85149' : '#3fb950',
+                padding: '6px 16px',
+                cursor: demoLoading ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '13px',
+                opacity: demoLoading ? 0.6 : 1,
+              }}
+            >
+              {demoLoading ? '...' : demoActive ? '■ Stop Demo' : '▶ Start Demo'}
+            </button>
             <button
               onClick={() => { fetchLogs(pagination.page, filters); fetchStats(); }}
               style={{

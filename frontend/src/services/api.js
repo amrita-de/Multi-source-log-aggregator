@@ -6,9 +6,12 @@ const api = axios.create({
 });
 
 export const logService = {
-  getLogs:     (params) => api.get('/logs', { params }),
-  getLogStats: (params) => api.get('/logs/stats', { params }),
-  getLogById:  (id)     => api.get(`/logs/${id}`),
+  getLogs:        (params) => api.get('/logs', { params }),
+  getLogStats:    (params) => api.get('/logs/stats', { params }),
+  getLogById:     (id)     => api.get(`/logs/${id}`),
+  startDemo:      ()       => api.post('/demo/start'),
+  stopDemo:       ()       => api.post('/demo/stop'),
+  getDemoStatus:  ()       => api.get('/demo/status'),
 };
 
 export default api;
