@@ -1,6 +1,7 @@
 /**
  * LogDetailModal — full log detail in an overlay modal
  */
+import { useEffect } from 'react';
 import dayjs from 'dayjs';
 
 const LEVEL_STYLE = {
@@ -41,6 +42,14 @@ function Row({ label, value, mono = false }) {
 }
 
 export default function LogDetailModal({ log, onClose }) {
+  // Prevent body scroll and table horizontal shift when modal is open
+  useEffect(() => {
+    if (log) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [log]);
+
   if (!log) return null;
 
   const levelStyle = LEVEL_STYLE[log.level] || LEVEL_STYLE.DEBUG;

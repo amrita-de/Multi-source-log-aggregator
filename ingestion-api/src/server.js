@@ -21,23 +21,40 @@ const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
   : ['http://localhost:5173', 'http://localhost:3000'];
 
+// CORS config — used by both Express and Socket.io
+const corsConfig = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    // Check allowed origins
+    if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
+      return callback(null, true);
+    }
+    // Allow any .vercel.app domain
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow any .onrender.com domain
+    if (origin.endsWith('.onrender.com')) return callback(null, true);
+    // Default: allow (for demo/portfolio — not production-hardened)
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+};
+
 // --- Express App ---
 const app    = express();
 const server = http.createServer(app);
 
 // --- Socket.io ---
 const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
-  },
+  cors: corsConfig,
 });
 
 // Make io accessible in routes via req.app.get('io')
 app.set('io', io);
 
 // --- Middleware ---
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors(corsConfig));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
