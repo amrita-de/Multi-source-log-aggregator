@@ -150,6 +150,66 @@ async function startEmbeddedWorker() {
   }
 }
 
+// --- Demo Log Producers (embedded, for live deployment) ---
+function startDemoProducers() {
+  const { v4: uuidv4 } = require('uuid');
+
+  const services = [
+    {
+      name: 'Payment-Service', interval: 8000,
+      levels: ['INFO','INFO','INFO','INFO','INFO','WARN','WARN','ERROR'],
+      messages: {
+        INFO: ['Payment processed successfully','Transaction initiated for order','Payment gateway connected','Payment confirmation sent','Refund initiated successfully','Invoice generated for order'],
+        WARN: ['Payment retry attempt 1 of 3','Slow response from payment gateway (>2s)','Duplicate transaction detected','Rate limit approaching on gateway API'],
+        ERROR: ['Payment gateway timeout after 30s','Transaction declined: insufficient funds','Payment gateway returned 503','Database write failed for transaction record'],
+      },
+      meta: () => ({ order_id: `ORD-${Math.floor(Math.random()*90000+10000)}`, amount: +(Math.random()*5000+100).toFixed(2), currency: 'INR', gateway: ['Razorpay','Stripe','PayU'][Math.floor(Math.random()*3)] }),
+    },
+    {
+      name: 'Auth-Service', interval: 10000,
+      levels: ['INFO','INFO','INFO','INFO','WARN','WARN','ERROR','DEBUG'],
+      messages: {
+        INFO: ['User login successful','JWT token issued','Session refreshed','User logout completed','New user registered','OAuth token validated'],
+        WARN: ['Failed login attempt (wrong password)','Login from unusual location','Multiple failed logins detected','Account temporarily locked'],
+        ERROR: ['JWT secret key rotation failed','OAuth provider returned 500','Token verification failed','Redis session store unreachable'],
+        DEBUG: ['Token payload decoded','RBAC check passed','Rate limiter incremented'],
+      },
+      meta: () => ({ user_id: `user_${Math.floor(Math.random()*9000+1000)}`, ip_address: `192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`, auth_method: ['password','oauth_google','api_key','2fa'][Math.floor(Math.random()*4)] }),
+    },
+    {
+      name: 'Inventory-Service', interval: 12000,
+      levels: ['INFO','INFO','INFO','INFO','INFO','WARN','ERROR','DEBUG'],
+      messages: {
+        INFO: ['Stock level updated for item','Warehouse sync completed','Stock reservation created','Item dispatched from warehouse','Goods received from supplier','Inventory audit completed'],
+        WARN: ['Low stock alert: below reorder threshold','Slow sync with warehouse system','Stock discrepancy found in audit'],
+        ERROR: ['Failed to sync with warehouse system','Stock update conflict','Database deadlock on inventory table','Barcode scanner API connection refused'],
+        DEBUG: ['Cache invalidated for inventory list','Elasticsearch index updated'],
+      },
+      meta: () => ({ sku: `SKU-${Math.floor(Math.random()*9000+1000)}`, quantity: Math.floor(Math.random()*500+1), warehouse: ['WH-Mumbai','WH-Delhi','WH-Bangalore','WH-Hyderabad'][Math.floor(Math.random()*4)] }),
+    },
+  ];
+
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  console.log('[Demo] Starting embedded log producers\n');
+
+  for (const svc of services) {
+    const produce = () => {
+      const level = pick(svc.levels);
+      const msgs = svc.messages[level] || svc.messages.INFO;
+      const log = {
+        app_name: svc.name, level, message: pick(msgs),
+        timestamp: Math.floor(Date.now() / 1000),
+        environment: 'production',
+        metadata: { request_id: uuidv4(), ...svc.meta(), duration_ms: Math.floor(Math.random()*2000+50) },
+      };
+      queue.push(log).catch(() => {});
+    };
+    produce();
+    setInterval(produce, svc.interval + Math.floor(Math.random() * 4000));
+  }
+}
+
 // --- Startup ---
 async function start() {
   try {
@@ -172,6 +232,11 @@ async function start() {
     // Start embedded worker if RUN_WORKER=true (for single-process deploy)
     if (process.env.RUN_WORKER === 'true') {
       startEmbeddedWorker();
+    }
+
+    // Start demo log producers if DEMO_MODE=true (generates fake data automatically)
+    if (process.env.DEMO_MODE === 'true') {
+      startDemoProducers();
     }
   } catch (err) {
     console.error('[Server] Startup failed:', err.message);
