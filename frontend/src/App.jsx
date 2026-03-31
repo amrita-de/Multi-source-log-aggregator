@@ -78,6 +78,10 @@ export default function App() {
     fetchLogs(1, DEFAULT_FILTERS);
     fetchStats();
     logService.getDemoStatus().then(res => setDemoActive(res.data.active)).catch(() => {});
+
+    // Auto-refresh stats every 10 seconds
+    const statsInterval = setInterval(fetchStats, 10000);
+    return () => clearInterval(statsInterval);
   }, []);
 
   useEffect(() => {
